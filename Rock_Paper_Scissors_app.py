@@ -76,7 +76,7 @@ clear_button.place(relx=0.75, relheight=1, relwidth=0.25)
 game_frame = tk.Frame(root, bg = '#80c1ff', bd=10)
 game_frame.place(relx=0.5,rely=0.25, relwidth=0.75, relheight=0.6, anchor='n')
 
-label = tk.Label(game_frame, font=('Courier', 18), anchor='nw', justify='left', bd=4)
+label = tk.Label(game_frame, font=('Courier', 18), anchor='nw', justify='left', bd=4,text = 'Enter rock, paper, or scissors. \nOnly use lower case. \nIf you use any other word or \ncase, then you lose.')
 label.place(relwidth=1, relheight=1)
 
 root.mainloop()
