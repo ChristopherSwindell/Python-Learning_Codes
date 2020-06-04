@@ -6,38 +6,46 @@ HEIGHT = 569
 WIDTH = 600
 
 out_list = []
+opp_hand = 'Rock'
+outcome = 'won'
 
 def clear_count():
     out_list.clear()
     
 def play_game(your_hand):
+    global opp_hand
+    global outcome
     numgen=random.randint(0,3)
 
     if numgen == 1:
-        opp_hand = 'Rock'
+        opp_hand = 'rock'
     elif numgen == 2:
-        opp_hand = 'Paper'
+        opp_hand = 'paper'
     elif numgen == 3:
-        opp_hand = 'Scissors'
-
-
+        opp_hand = 'scissors'
 
     if opp_hand == your_hand:
         outcome = 'tied'
-    elif opp_hand == 'Rock':
-        if your_hand == 'Paper':
+    elif opp_hand == 'rock':
+        if your_hand == 'paper':
             outcome = 'lost'
-        elif your_hand == 'Scissors':
+        elif your_hand == 'scissors':
             outcome = 'won'
-    elif opp_hand == "Paper":
-        if your_hand == "Rock":
+        elif your_hand not in ['rock', 'paper', 'scissors']:
             outcome = 'lost'
-        elif your_hand == "Scissors":
+    elif opp_hand == "paper":
+        if your_hand == "rock":
+            outcome = 'lost'
+        elif your_hand == "scissors":
             outcome = 'won'
-    elif opp_hand == "Scissors":
-        if your_hand == "Rock":
+        elif your_hand not in ['rock', 'paper', 'scissors']:
+            outcome = 'lost'
+    elif opp_hand == "scissors":
+        if your_hand == "rock":
             outcome = 'won'
-        elif your_hand == "Papaer":
+        elif your_hand == "paper":
+            outcome = 'lost'
+        elif your_hand not in ['rock', 'paper', 'scissors']:
             outcome = 'lost'
 
     out_list.append(outcome)
