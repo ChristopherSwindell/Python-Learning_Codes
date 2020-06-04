@@ -6,8 +6,6 @@ HEIGHT = 569
 WIDTH = 600
 
 out_list = []
-opp_hand = 'Rock'
-outcome = 'won'
 
 def clear_count():
     out_list.clear()
