@@ -11,40 +11,16 @@ def clear_count():
     out_list.clear()
     
 def play_game(your_hand):
-    global opp_hand
+    hands = ['rock','paper','scissors']
+    opp_hand=random.choice(hands)
+
     global outcome
-    numgen=random.randint(0,3)
-
-    if numgen == 1:
-        opp_hand = 'rock'
-    elif numgen == 2:
-        opp_hand = 'paper'
-    elif numgen == 3:
-        opp_hand = 'scissors'
-
     if opp_hand == your_hand:
         outcome = 'tied'
-    elif opp_hand == 'rock':
-        if your_hand == 'paper':
-            outcome = 'lost'
-        elif your_hand == 'scissors':
-            outcome = 'won'
-        elif your_hand not in ['rock', 'paper', 'scissors']:
-            outcome = 'lost'
-    elif opp_hand == "paper":
-        if your_hand == "rock":
-            outcome = 'lost'
-        elif your_hand == "scissors":
-            outcome = 'won'
-        elif your_hand not in ['rock', 'paper', 'scissors']:
-            outcome = 'lost'
-    elif opp_hand == "scissors":
-        if your_hand == "rock":
-            outcome = 'won'
-        elif your_hand == "paper":
-            outcome = 'lost'
-        elif your_hand not in ['rock', 'paper', 'scissors']:
-            outcome = 'lost'
+    elif opp_hand+your_hand in ['rockpaper','paperscissors','scissorsrock']:
+        outcome = 'won'
+    else:
+        outcome = 'lost'
 
     out_list.append(outcome)
     your_choice = "You chose " + your_hand + ". " + "Your opponent chose "+ opp_hand + ". You " + outcome + ". You have won " + str(out_list.count('won')) + " out of " + str(len(out_list)) + " games."
