@@ -17,8 +17,8 @@ while True:
 
     out_list.append(outcome)
 
-    print("Your opponent chose", opp_hand,".")
-    print("You", outcome,".")
+    print("Your opponent chose " + str(opp_hand) + ".")
+    print("You " + str(outcome) + ".")
     print("You have won",out_list.count('won'), "out of",len(out_list),"games.")
 
     if input("Do you want to continue? Y/N     ") not in ['Y','y','Yes','yes','YES']:
