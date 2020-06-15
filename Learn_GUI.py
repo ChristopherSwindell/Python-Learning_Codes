@@ -9,7 +9,7 @@ def test_function(entry):
     print("This is the entry:", entry)
 
 ##api.openweathermap.org/data/2.5/forecast?q={city name},{state code},{country code}&appid={your api key}
-##bab73e80aea147e3dc611d8181b4b6b0
+##************************
 
 def format_response(weather):
     try:
@@ -23,7 +23,7 @@ def format_response(weather):
     return final_str
 
 def get_weather(city):
-    weather_key = 'bab73e80aea147e3dc611d8181b4b6b0'
+    weather_key = '*********************'
     url = 'https://api.openweathermap.org/data/2.5/weather'
     params = {'APPID': weather_key, 'q': city, 'units': 'imperial'}
     response = requests.get(url, params = params)
