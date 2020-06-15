@@ -7,7 +7,7 @@
 
 # ### Import Necessary Libraries
 
-# In[6]:
+# In[232]:
 
 
 import pandas as pd
@@ -15,13 +15,18 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import random
-from sklearn import linear_model
 import seaborn as sns 
+import scipy.stats as ss
+import statsmodels.api as sm
+from sklearn import (datasets, neighbors,
+                    model_selection as skms,
+                    linear_model, 
+                    metrics)
 
 
 # ### Import Data
 
-# In[4]:
+# In[2]:
 
 
 df = pd.read_csv("C:/python/Data/kc_house_data.csv")
@@ -29,7 +34,7 @@ df = pd.read_csv("C:/python/Data/kc_house_data.csv")
 
 # ### Take an initial look at the data
 
-# In[42]:
+# In[3]:
 
 
 #Look at number of rows and columns
@@ -86,7 +91,7 @@ df.head()
 
 # ### Create some basic descriptive statistics of the data
 
-# In[34]:
+# In[4]:
 
 
 # A glossery of terms can be found at https://info.kingcounty.gov/assessor/esales/Glossary.aspx?type=r
@@ -97,7 +102,7 @@ df[['price','bedrooms','bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'condit
     'sqft_basement','sqft_living15', 'sqft_lot15']].describe(percentiles = perc)
 
 
-# In[20]:
+# In[5]:
 
 
 g = sns.pairplot(df, vars = ['price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'floors', 'waterfront', 'view', 
@@ -107,9 +112,19 @@ g.fig.suptitle("Pair Plots", y=1.08)
 
 # #### There is some linear relationship between several of the variables and price. Generally, the number of bedrooms, bathrooms, and square feet appear to be positively associated with price. We might want to explore a potential interaction between number of bedrooms and number of bathrooms. Grade is positively associated with price and we might want to check if there is a small polynomial relationship.
 
-# #### Since location might affect prices, a new region column is created based on King County Geographies
+# In[208]:
 
-# In[52]:
+
+plt.scatter(df['lat'], df['long'], label='Lat/Long Coords', color = 'b', marker = 'o', s = 1)
+
+plt.xlabel('Latitude')
+plt.ylabel('Longitude')
+plt.title('Plot of House Locations')
+
+
+# #### Would it be useful to divide King County into regions? Done for practice here.
+
+# In[6]:
 
 
 #Combine zip codes into four regions: North, South, East, and Seattle
@@ -155,14 +170,324 @@ df.head()
     
 
 
-# In[55]:
+# In[165]:
+
+
+g1 = sns.pairplot(df, vars = ['price', 'lat', 'long'])
+g1.fig.suptitle("Pair Plots", y=1.08)
+
+
+# In[7]:
 
 
 h = sns.pairplot(df, hue = 'region', vars = ['price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'grade'])
 h.fig.suptitle("Pair Plots\nBy Region", y=1.08)
 
 
+# #### Check correlations
+
+# In[131]:
+
+
+corr = df[['price', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 'condition', 'grade']].corr()
+corr
+#sns.heatmap(corr)
+
+
+# In[8]:
+
+
+dfgbmean = df.groupby(['region']).mean()
+display(dfgbmean)
+
+dfgbsd = df.groupby(['region']).std()
+display(dfgbsd)
+
+dfgbmed = df.groupby(['region']).median()
+display(dfgbmed)
+
+
+# In[9]:
+
+
+import statistics
+print('Mean: ', statistics.mean(df['price']))
+print('Std Dev: ', statistics.stdev(df['price']))
+
+
+# 
+# #### Look at several distributions relative to a histogram
+
+# In[91]:
+
+
+#The x axis is artificially constrained to $2 million. Prices range up to about $8 million.
+
+from scipy.stats import weibull_min
+from scipy.stats import norm
+from scipy.stats import lognorm
+from matplotlib.patches import Rectangle
+
+n, bins, patches = plt.hist(df['price'], 500, density = 1, facecolor = 'b', alpha = .75)
+
+#Overlay distributions that might be an appropriate fit
+x = np.linspace(df['price'].min(), df['price'].max(), 100)
+
+#Weibull Distribution
+shape, loc, scale = weibull_min.fit(df['price'], floc=0)
+plt.plot(x, weibull_min(shape, loc, scale).pdf(x), color = 'g')
+
+#Normal Distribution
+shape, loc = norm.fit(df['price'])
+plt.plot(x, norm(shape, loc).pdf(x), color = 'r')
+
+#Lognormal Distribution
+shape, loc, scale = lognorm.fit(df['price'], floc=0)
+plt.plot(x, lognorm(shape, loc, scale).pdf(x), color = 'y')
+
+plt.xlabel('Price')
+plt.ticklabel_format(style = 'plain')
+plt.xticks(rotation='vertical')
+plt.ylabel('Probability')
+plt.title('Histogram of All Prices\nAnd Some Distributions')
+#plt.text(700000, 0.00000175, r'$\mu=540088,\ \sigma=367127$')
+plt.axis([0,2000000,0,0.0000025])
+
+handles = [Rectangle((0,0),1,1,color=c,ec="k") for c in ['b', 'r', 'y', 'g']]
+labels= ["Price","Normal", "Lognormal", "Weibull"]
+plt.legend(handles, labels)
+
+
+# #### Divide the data set into regions
+
+# In[80]:
+
+
+dfeast = df[df.region == 'East'].copy()
+dfnorth = df[df.region == 'North'].copy()
+dfseattle = df[df.region == 'Seattle'].copy()
+dfsouth = df[df.region == 'South'].copy()
+
+
+# #### Check that the price distribution holds across all three regions (note different parameters are used for each region)
+
+# In[158]:
+
+
+n, bins, patches = plt.hist(dfeast['price'], 100, density = 1, facecolor = 'b', alpha = .75)
+
+#Overlay distributions that might be an appropriate fit
+x = np.linspace(dfeast['price'].min(), dfeast['price'].max(), 100)
+
+#Weibull Distribution
+shape, loc, scale = weibull_min.fit(dfeast['price'], floc=0)
+plt.plot(x, weibull_min(shape, loc, scale).pdf(x), color = 'g')
+
+#Normal Distribution
+shape, loc = norm.fit(dfeast['price'])
+plt.plot(x, norm(shape, loc).pdf(x), color = 'r')
+
+#Lognormal Distribution
+shape, loc, scale = lognorm.fit(dfeast['price'], floc=0)
+plt.plot(x, lognorm(shape, loc, scale).pdf(x), color = 'y')
+
+plt.xlabel('Price')
+plt.ticklabel_format(style = 'plain')
+plt.xticks(rotation='vertical')
+plt.ylabel('Probability')
+plt.title('Histogram of Region East Prices\nAnd Some Distributions')
+#plt.text(700000, 0.00000175, r'$\mu=540088,\ \sigma=367127$')
+plt.axis([0,2000000,0,0.0000025])
+
+handles = [Rectangle((0,0),1,1,color=c,ec="k") for c in ['b', 'r', 'y', 'g']]
+labels= ["Price","Normal", "Lognormal", "Weibull"]
+plt.legend(handles, labels)
+
+
+# In[157]:
+
+
+n, bins, patches = plt.hist(dfnorth['price'], 50, density = 1, facecolor = 'b', alpha = .75)
+
+#Overlay distributions that might be an appropriate fit
+x = np.linspace(dfnorth['price'].min(), dfnorth['price'].max(), 100)
+
+#Weibull Distribution
+shape, loc, scale = weibull_min.fit(dfnorth['price'], floc=0)
+plt.plot(x, weibull_min(shape, loc, scale).pdf(x), color = 'g')
+
+#Normal Distribution
+shape, loc = norm.fit(dfnorth['price'])
+plt.plot(x, norm(shape, loc).pdf(x), color = 'r')
+
+#Lognormal Distribution
+shape, loc, scale = lognorm.fit(dfnorth['price'], floc=0)
+plt.plot(x, lognorm(shape, loc, scale).pdf(x), color = 'y')
+
+plt.xlabel('Price')
+plt.ticklabel_format(style = 'plain')
+plt.xticks(rotation='vertical')
+plt.ylabel('Probability')
+plt.title('Histogram of Region North Prices\nAnd Some Distributions')
+#plt.text(700000, 0.00000175, r'$\mu=540088,\ \sigma=367127$')
+plt.axis([0,2000000,0,0.0000035])
+
+handles = [Rectangle((0,0),1,1,color=c,ec="k") for c in ['b', 'r', 'y', 'g']]
+labels= ["Price","Normal", "Lognormal", "Weibull"]
+plt.legend(handles, labels)
+
+
+# In[163]:
+
+
+n, bins, patches = plt.hist(dfseattle['price'], 200, density = 1, facecolor = 'b', alpha = .75)
+
+#Overlay distributions that might be an appropriate fit
+x = np.linspace(dfseattle['price'].min(), dfseattle['price'].max(), 100)
+
+#Weibull Distribution
+shape, loc, scale = weibull_min.fit(dfseattle['price'], floc=0)
+plt.plot(x, weibull_min(shape, loc, scale).pdf(x), color = 'g')
+
+#Normal Distribution
+shape, loc = norm.fit(dfseattle['price'])
+plt.plot(x, norm(shape, loc).pdf(x), color = 'r')
+
+#Lognormal Distribution
+shape, loc, scale = lognorm.fit(dfseattle['price'], floc=0)
+plt.plot(x, lognorm(shape, loc, scale).pdf(x), color = 'y')
+
+plt.xlabel('Price')
+plt.ticklabel_format(style = 'plain')
+plt.xticks(rotation='vertical')
+plt.ylabel('Probability')
+plt.title('Histogram of Region Seattle Prices\nAnd Some Distributions')
+#plt.text(700000, 0.00000175, r'$\mu=540088,\ \sigma=367127$')
+plt.axis([0,2000000,0,0.0000025])
+
+handles = [Rectangle((0,0),1,1,color=c,ec="k") for c in ['b', 'r', 'y', 'g']]
+labels= ["Price","Normal", "Lognormal", "Weibull"]
+plt.legend(handles, labels)
+
+
+# In[164]:
+
+
+n, bins, patches = plt.hist(dfsouth['price'], 200, density = 1, facecolor = 'b', alpha = .75)
+
+#Overlay distributions that might be an appropriate fit
+x = np.linspace(dfsouth['price'].min(), dfsouth['price'].max(), 100)
+
+#Weibull Distribution
+shape, loc, scale = weibull_min.fit(dfsouth['price'], floc=0)
+plt.plot(x, weibull_min(shape, loc, scale).pdf(x), color = 'g')
+
+#Normal Distribution
+shape, loc = norm.fit(dfsouth['price'])
+plt.plot(x, norm(shape, loc).pdf(x), color = 'r')
+
+#Lognormal Distribution
+shape, loc, scale = lognorm.fit(dfsouth['price'], floc=0)
+plt.plot(x, lognorm(shape, loc, scale).pdf(x), color = 'y')
+
+plt.xlabel('Price')
+plt.ticklabel_format(style = 'plain')
+plt.xticks(rotation='vertical')
+plt.ylabel('Probability')
+plt.title('Histogram of Region South Prices\nAnd Some Distributions')
+#plt.text(700000, 0.00000175, r'$\mu=540088,\ \sigma=367127$')
+plt.axis([0,2000000,0,0.0000050])
+
+handles = [Rectangle((0,0),1,1,color=c,ec="k") for c in ['b', 'r', 'y', 'g']]
+labels= ["Price","Normal", "Lognormal", "Weibull"]
+plt.legend(handles, labels)
+
+
+# #### Split the data into training, testing, and validation sets
+
+# In[218]:
+
+
+#Create target and independent variable data sets
+target = df['price']
+ftrs = df.drop(['id', 'price', 'region', 'date'], axis=1)
+
+#Split the data sets into training and testing data. Then split the testing data into testing and validation data
+ftrs_train, ftrs_test1, target_train, target_test1 = skms.train_test_split(ftrs, target, 
+                                                                                              test_size = 0.8, 
+                                                                                              random_state = 1)
+ftrs_test, ftrs_val, target_test, target_val = skms.train_test_split(ftrs_test1, target_test1, 
+                                                                                        test_size = 0.5, 
+                                                                                        random_state = 1)
+
+
+# #### Run some models
+
+# In[253]:
+
+
+#KNN model
+knn = neighbors.KNeighborsRegressor(n_neighbors=10)
+fit = knn.fit(ftrs_train, target_train)
+preds = knn.predict(ftrs_test)
+
+#Evaluate teh predictions
+msq = metrics.mean_squared_error(target_test, preds)
+msq
+#display(kc_test_target, preds)
+
+####Try some different parameters####
+
+
+# In[251]:
+
+
+# Linear regression model
+# Create linear regression object
+regr = linear_model.LinearRegression()
+
+#Train the model using the training sets
+regr.fit(ftrs_train, target_train)
+
+#Make predictions using the testing set
+pred = regr.predict(ftrs_test)
+
+# The coefficients
+print('Coefficients: \n', regr.coef_)
+# The mean squared error
+mse = metrics.mean_squared_error(target_test, pred)
+print('Mean squared error: ', "{:.2f}".format(mse))
+# Explained variance
+result_expl_var = metrics.explained_variance_score(target_test, pred)
+print('Score: ', "{:.2f}".format(result_expl_var))
+
+# Plot outputs
+plt.scatter(target_test, pred,  label='Actual vs Predicted', color = 'b', marker = 'o', s = 1)
+
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('Plot of Actual Vs Predicted Results')
+
+
+
 # In[ ]:
+
+
+#Transform the target by logging the price, then run the regression again
+
+
+# In[ ]:
+
+
+#Tree Regression
+
+
+# In[ ]:
+
+
+#Random Forest
+
+
 
 
 
